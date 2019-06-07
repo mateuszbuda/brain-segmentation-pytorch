@@ -5,7 +5,6 @@ import os
 import numpy as np
 import torch
 import torch.optim as optim
-from medpy.filter.binary import largest_connected_component
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -14,7 +13,7 @@ from logger import Logger
 from loss import DiceLoss
 from transform import transforms
 from unet import UNet
-from utils import log_images
+from utils import log_images, dsc
 
 
 def main(args):
@@ -151,14 +150,6 @@ def datasets(args):
     return train, valid
 
 
-def dsc(y_pred, y_true, lcc=True):
-    y_pred = np.round(y_pred).astype(int)
-    y_true = np.round(y_true).astype(int)
-    if lcc and np.any(y_pred):
-        y_pred = largest_connected_component(y_pred)
-    return np.sum(y_pred[y_true == 1]) * 2.0 / (np.sum(y_pred) + np.sum(y_true))
-
-
 def dsc_per_volume(validation_pred, validation_true, patient_slice_index):
     dsc_list = []
     num_slices = np.bincount([p[0] for p in patient_slice_index])
@@ -188,7 +179,7 @@ def snapshotargs(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Training U-Net model for segmentation of nodules in thyroid US images"
+        description="Training U-Net model for segmentation of brain MRI"
     )
     parser.add_argument(
         "--batch-size",
