@@ -1,6 +1,7 @@
 kaggle_3m
 weights
 logs
+predictions
 
 # Created by https://www.gitignore.io/api/osx,linux,matlab,python,pycharm+all,intellij+all,jupyternotebook
 
