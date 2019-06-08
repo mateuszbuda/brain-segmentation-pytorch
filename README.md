@@ -1,4 +1,4 @@
-# U-Net for brain segmentation in PyTorch
+# U-Net for brain segmentation
 
 U-Net implementation in PyTorch for FLAIR abnormality segmentation in brain MRI based on a deep learning segmentation algorithm used in [Association of genomic subtypes of lower-grade gliomas with shape features automatically extracted by a deep learning algorithm](https://doi.org/10.1016/j.compbiomed.2019.05.002).
 
@@ -33,7 +33,6 @@ nvidia-docker run --rm --shm-size 8G -it -v `pwd`:/workspace brainseg
 ![dataset](./assets/brain-mri-lgg.png)
 
 Dataset used for development and evaluation was made publicly available on Kaggle: [kaggle.com/mateuszbuda/lgg-mri-segmentation](https://www.kaggle.com/mateuszbuda/lgg-mri-segmentation).
-
 It contains MR images from [TCIA LGG collection](https://wiki.cancerimagingarchive.net/display/Public/TCGA-LGG) with segmentation masks approved by a board-certified radiologist at Duke University.
 
 ## model
@@ -44,11 +43,11 @@ A segmentation model implemented in this repository is U-Net as described in [As
 
 ## results
 
-|![TCGA_DU_6404_19850629](./assets/TCGA_DU_6404_19850629.gif)|![TCGA_CS_4944_20010208](./assets/TCGA_CS_4944_20010208.gif)|
-|:-------:|:-------:|
-| 94% DSC | 89% DSC |
+|![TCGA_DU_6404_19850629](./assets/TCGA_DU_6404_19850629.gif)|![TCGA_HT_7879_19981009](./assets/TCGA_HT_7879_19981009.gif)|![TCGA_CS_4944_20010208](./assets/TCGA_CS_4944_20010208.gif)|
+|:-------:|:-------:|:-------:|
+| 94% DSC | 91% DSC | 89% DSC |
 
-Qualitative results for validation cases from two institutions with DSC of 94% and 89%, respectively.
+Qualitative results for validation cases from three different institutions with DSC of 94%, 91%, and 89%.
 Green outlines correspond to ground truth and red to model predictions.
 Images show FLAIR modality after preprocessing. 
 
