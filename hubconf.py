@@ -16,7 +16,8 @@ def unet(pretrained=False, **kwargs):
     model = UNet(**kwargs)
 
     if pretrained:
-        state_dict = torch.load("weights/unet.pt")
+        checkpoint = "https://github.com/mateuszbuda/brain-segmentation-pytorch/releases/download/v1.0/unet-e012d006.pt"
+        state_dict = torch.hub.load_state_dict_from_url(checkpoint, progress=False)
         model.load_state_dict(state_dict)
 
     return model
