@@ -1,0 +1,15 @@
+hydra:
+  run:
+    dir: ./unet-training/${now:%Y-%m-%d}/${now:%H-%M-%S}
+device: 'cuda:0'
+weights: /Users/cenk.bircanoglu/workspace/personal/vision/unet/unet-training/2021-03-30/06-24-56/weights/u2netp.pt
+logs: ./logs
+voc12_root: ${hydra:runtime.cwd}/../data/raw/VOCdevkit/VOC2012
+infer_list: ${hydra:runtime.cwd}/voc12/val.txt
+cls_label_path: ${hydra:runtime.cwd}/voc12/cls_labels.npy
+crop_size: 320
+mid_ch: 16
+model: models.u2netp.seg
+share_classifier: False
+cam_number: 0
+output_dir: sem_outputs/

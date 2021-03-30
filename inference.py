@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from dataset import BrainSegmentationDataset as Dataset
-from unet import UNet
+from model import UNet
 from utils import dsc, gray2rgb, outline
 
 

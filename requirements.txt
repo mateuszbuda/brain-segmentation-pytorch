@@ -8,3 +8,5 @@ Pillow==6.0.0
 scipy==1.2.1
 pandas==0.24.2
 tqdm==4.32.1
+hydra-core
+torchsummary

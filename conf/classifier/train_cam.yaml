@@ -1,0 +1,19 @@
+hydra:
+  run:
+    dir: ./unet-training/${now:%Y-%m-%d}/${now:%H-%M-%S}
+batch_size: 16
+epochs: 100
+lr: 0.001
+device: 'cuda:0'
+workers: 8
+weights: ./weights
+logs: ./logs
+voc12_root: ${hydra:runtime.cwd}/../data/raw/VOCdevkit/VOC2012
+train_list: ${hydra:runtime.cwd}/voc12/train_aug.txt
+val_list: ${hydra:runtime.cwd}/voc12/val.txt
+cls_label_path: ${hydra:runtime.cwd}/voc12/cls_labels.npy
+crop_size: 320
+weight_decay: 0
+mid_ch: 16
+model: models.u2netp.net
+share_classifier: True

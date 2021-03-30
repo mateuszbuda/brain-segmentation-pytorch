@@ -1,7 +1,39 @@
+import os
+
 import numpy as np
-from medpy.filter.binary import largest_connected_component
+from skimage.color import label2rgb
+# from medpy.filter.binary import largest_connected_component
 from skimage.exposure import rescale_intensity
 from skimage.transform import resize
+from sklearn.metrics import average_precision_score
+
+
+def log_loss_summary(logger, loss, step, tag):
+    logger.scalar_summary(tag, np.mean(loss), step)
+
+
+def makedirs(cfg):
+    os.makedirs(cfg.weights, exist_ok=True)
+    os.makedirs(cfg.logs, exist_ok=True)
+
+
+def get_ap_score(y_true, y_scores):
+    """
+    Get average precision score between 2 1-d numpy arrays
+
+    Args:
+        y_true: batch of true labels
+        y_scores: batch of confidence scores
+=
+    Returns:
+        sum of batch average precision
+    """
+    scores = 0.0
+
+    for i in range(y_true.shape[0]):
+        scores += average_precision_score(y_true=y_true[i], y_score=y_scores[i])
+
+    return scores
 
 
 def dsc(y_pred, y_true, lcc=True):
@@ -84,16 +116,24 @@ def normalize_volume(volume):
     return volume
 
 
-def log_images(x, y_true, y_pred, channel=1):
+def log_images(x, y_true, y_pred):
     images = []
-    x_np = x[:, channel].cpu().numpy()
-    y_true_np = y_true[:, 0].cpu().numpy()
-    y_pred_np = y_pred[:, 0].cpu().numpy()
+    x_np = x.cpu().numpy()
+    x_np = np.transpose(x_np, (0, 2, 3, 1))
     for i in range(x_np.shape[0]):
-        image = gray2rgb(np.squeeze(x_np[i]))
-        image = outline(image, y_pred_np[i], color=[255, 0, 0])
-        image = outline(image, y_true_np[i], color=[0, 255, 0])
+        y_pred_np = np.argmax(y_pred[i].cpu().numpy(), axis=0)
+
+        image = x_np[i]
+        image += np.abs(np.min(image))
+        image_max = np.abs(np.max(image))
+        if image_max > 0:
+            image /= image_max
+        image *= 255
+        prediction_segmentation = label2rgb(y_pred_np.astype(np.uint8), bg_label=0) * 255
+        true_segmentation = label2rgb(y_true[i].cpu().numpy(), bg_label=0) * 255
         images.append(image)
+        images.append(true_segmentation)
+        images.append(prediction_segmentation)
     return images
 
 
@@ -112,6 +152,10 @@ def outline(image, mask, color):
     mask = np.round(mask)
     yy, xx = np.nonzero(mask)
     for y, x in zip(yy, xx):
-        if 0.0 < np.mean(mask[max(0, y - 1) : y + 2, max(0, x - 1) : x + 2]) < 1.0:
-            image[max(0, y) : y + 1, max(0, x) : x + 1] = color
+        if 0.0 < np.mean(mask[max(0, y - 1): y + 2, max(0, x - 1): x + 2]) < 1.0:
+            image[max(0, y): y + 1, max(0, x): x + 1] = color
     return image
+
+
+if __name__ == '__main__':
+    print(get_ap_score(np.array([[0, 0, 1], [0, 0, 1]]), np.array([[0.2, 0.2, 0.8], [0.2, 0.8, 0.5]])) / 2)

@@ -1,0 +1,7 @@
+hydra:
+  run:
+    dir: ./unet-training/${now:%Y-%m-%d}/${now:%H-%M-%S}
+voc12_root: ${hydra:runtime.cwd}/../data/raw/VOCdevkit/VOC2012
+infer_set: val
+cls_label_path: ${hydra:runtime.cwd}/voc12/cls_labels.npy
+output_dir: /Users/cenk.bircanoglu/workspace/personal/vision/unet/unet-training/2021-03-30/21-37-50/sem_outputs

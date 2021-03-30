@@ -3,16 +3,15 @@ import os
 import hydra
 import numpy as np
 import torch
-import torch.nn.functional as F
+import torch.nn as nn
 import torch.optim as optim
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from logger import Logger
-from loss import dice_loss
-from models.unet import UNet
-from utils import log_images, get_ap_score
+from models.u2netp import U2NETP
+from utils import get_ap_score, log_images
 from voc12 import dataloader
 from voc12.dataloader import TorchvisionNormalize
 
@@ -31,7 +30,40 @@ def loss_multipliers(epoch, max_epoch):
     return first, second
 
 
-@hydra.main(config_path='./conf', config_name="train")
+bce_loss = nn.BCELoss(size_average=True)
+mlsm_loss = nn.MultiLabelSoftMarginLoss(size_average=True)
+
+
+def muti_bce_loss_fusion(d0, d1, d2, d3, d4, d5, d6, labels_v):
+    labels_v = labels_v.unsqueeze(1).float()
+    loss0 = bce_loss(d0, labels_v)
+    loss1 = bce_loss(d1, labels_v)
+    loss2 = bce_loss(d2, labels_v)
+    loss3 = bce_loss(d3, labels_v)
+    loss4 = bce_loss(d4, labels_v)
+    loss5 = bce_loss(d5, labels_v)
+    loss6 = bce_loss(d6, labels_v)
+
+    loss = loss0 + loss1 + loss2 + loss3 + loss4 + loss5 + loss6
+
+    return loss0, loss
+
+
+def muti_margin_loss_fusion(c0, c1, c2, c3, c4, c5, c6, labels_v):
+    loss0 = mlsm_loss(c0, labels_v)
+    loss1 = mlsm_loss(c1, labels_v)
+    loss2 = mlsm_loss(c2, labels_v)
+    loss3 = mlsm_loss(c3, labels_v)
+    loss4 = mlsm_loss(c4, labels_v)
+    loss5 = mlsm_loss(c5, labels_v)
+    loss6 = mlsm_loss(c6, labels_v)
+
+    loss = loss0 + loss1 + loss2 + loss3 + loss4 + loss5 + loss6
+
+    return loss0, loss
+
+
+@hydra.main(config_path='./conf', config_name="train_u2netp")
 def run_app(cfg: DictConfig) -> None:
     makedirs(cfg)
     device = torch.device("cpu" if not torch.cuda.is_available() else cfg.device)
@@ -39,12 +71,7 @@ def run_app(cfg: DictConfig) -> None:
     loader_train, loader_valid = data_loaders(cfg)
     loaders = {"train": loader_train, "valid": loader_valid}
 
-    unet = UNet(in_channels=3, out_channels=21, threshold=cfg.threshold, init_features=cfg.init_features)
-    if cfg.finetune:
-       state_dict = torch.load(cfg.finetune_from, map_location=device)
-       #state_dict.pop('conv.weight')
-       #state_dict.pop('conv.bias') #For the first model version
-       unet.load_state_dict(state_dict, strict=False)
+    unet = U2NETP(in_ch=3, out_ch=1, threshold=cfg.threshold)
     unet.to(device)
 
     optimizer = optim.Adam(unet.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
@@ -74,16 +101,22 @@ def run_app(cfg: DictConfig) -> None:
                 with torch.set_grad_enabled(phase == "train"):
                     seg_label_pred, cls_label_pred, bottleneck = unet(img)
                     seg_label_pseudo = []
-                    for l, j, k in zip(bottleneck, cls_label.clone(), seg_label.clone()):
-                        seg_label_pseudo.append(unet.create_seg_label_from_cls_labels(l, j, k))
+                    bottleneck1, bottleneck2, bottleneck3, bottleneck4, bottleneck5, bottleneck6 = bottleneck
+                    for l1, l2, l3, l4, l5, l6, j, k in zip(bottleneck1, bottleneck2, bottleneck3, bottleneck4,
+                                                            bottleneck5, bottleneck6, cls_label, seg_label):
+                        seg_label_pseudo.append(unet.create_seg_label_from_cls_labels(l1, l2, l3, l4, l5, l6, j, k))
 
                     seg_label_pseudo = torch.cat(seg_label_pseudo, axis=0).to(device)
-                    seg_loss = dice_loss(seg_label_pred, seg_label_pseudo)
-                    cls_loss = F.multilabel_soft_margin_loss(cls_label_pred, cls_label)
+                    d0, d1, d2, d3, d4, d5, d6 = seg_label_pred
+                    c0, c1, c2, c3, c4, c5, c6 = cls_label_pred
+                    seg_loss2, seg_loss = muti_bce_loss_fusion(d0, d1, d2, d3, d4, d5, d6, seg_label_pseudo)
+                    cls_loss2, cls_loss = muti_margin_loss_fusion(c0, c1, c2, c3, c4, c5, c6, cls_label)
+
                     with torch.set_grad_enabled(False):
-                        outputs = torch.sigmoid(cls_label_pred)
+                        outputs = torch.sigmoid(c0)
                         total_cnt += cls_label.size(0)
-                        running_ap += get_ap_score(cls_label.cpu().detach().numpy(), outputs.cpu().detach().numpy())
+                        running_ap += get_ap_score(cls_label.cpu().detach().numpy(),
+                                                   outputs.cpu().detach().numpy())
                     lambda1, lambda2 = loss_multipliers(epoch, cfg.epochs)
                     loss = lambda1 * cls_loss + lambda2 * seg_loss
                     if phase == "valid":
@@ -96,7 +129,8 @@ def run_app(cfg: DictConfig) -> None:
                                 num_images = cfg.vis_images - i * cfg.batch_size
                                 logger.image_list_summary(
                                     tag,
-                                    log_images(img, seg_label_pseudo, seg_label_pred, cfg.threshold)[:num_images],
+                                    log_images(img, seg_label_pseudo, seg_label_pred[0], cfg.threshold)[
+                                    :num_images],
                                     step,
                                 )
 
@@ -125,7 +159,7 @@ def run_app(cfg: DictConfig) -> None:
                 log_loss_summary(logger, seg_loss_valid, step, tag="val_seg_loss")
                 log_loss_summary(logger, [float(running_ap) / total_cnt], step, tag="val_mAP")
 
-                torch.save(unet.state_dict(), os.path.join(cfg.weights, "unet.pt"))
+                torch.save(unet.state_dict(), os.path.join(cfg.weights, "u2netp.pt"))
                 loss_valid = []
                 cls_loss_valid = []
                 seg_loss_valid = []

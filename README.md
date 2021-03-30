@@ -21,11 +21,13 @@ If you use code or weights shared in this repository, please consider citing:
 ## docker
 
 ```
-docker build -t brainseg .
+docker build -t unet .
 ```
 
 ```
-nvidia-docker run --rm --shm-size 8G -it -v `pwd`:/workspace brainseg
+nvidia-docker run --rm --shm-size 8G -it -v `pwd`:/workspace -v /Users/cenk.bircanoglu/workspace/personal/vision/data:/workspace/data -v /Users/cenk.bircanoglu/workspace/personal/vision/unet-training:/workspace/unet-training unet
+
+nvidia-docker run --rm --shm-size 8G -it -v `pwd`:/workspace -v /home/cenk/ws/vision/data:/workspace/data -v /home/cenk/ws/vision/unet-training:/workspace/unet-training unet
 ```
 
 ## PyTorch Hub
