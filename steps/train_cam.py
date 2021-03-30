@@ -11,47 +11,79 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from logger import Logger
-from utils import get_ap_score, log_loss_summary, makedirs
+from utils import get_ap_score, log_loss_summary
 from voc12 import dataloader
 
-mlsm_loss = nn.MultiLabelSoftMarginLoss(size_average=True)
+mlsm_loss = nn.MultiLabelSoftMarginLoss(reduction='mean')
 
 
-def muti_margin_loss_fusion(c0, c1, c2, c3, c4, c5, c6, labels_v):
-    loss0 = mlsm_loss(c0, labels_v)
-    loss1 = mlsm_loss(c1, labels_v)
-    loss2 = mlsm_loss(c2, labels_v)
-    loss3 = mlsm_loss(c3, labels_v)
-    loss4 = mlsm_loss(c4, labels_v)
-    loss5 = mlsm_loss(c5, labels_v)
-    loss6 = mlsm_loss(c6, labels_v)
-
-    loss = loss0 + loss1 + loss2 + loss3 + loss4 + loss5 + loss6
-
-    return loss0, loss
+def multi_margin_loss_fusion(class_preds, labels_v):
+    if type(class_preds) == tuple:
+        losses = [mlsm_loss(c, labels_v) for c in class_preds]
+        return losses, sum(losses)
+    else:
+        loss = mlsm_loss(class_preds, labels_v)
+        return [loss], loss
 
 
-@hydra.main(config_path='../conf', config_name="classifier/train_cam")
+def initialize_losses():
+    losses = {
+        'tr_total_loss': [],
+        'val_total_loss': []
+    }
+    for i in range(1, 7):
+        losses.update({f'tr_block{i}_loss': []})
+        losses.update({f'val_block{i}_loss': []})
+    return losses
+
+
+def log_losses(logger, step, phase, losses_dict, ap_scores, total_cnt):
+    losses = losses_dict[phase]
+
+    log_loss_summary(logger, losses[0], step, tag=f'{phase}_total_loss')
+    for idx, tr_loss in enumerate(losses):
+        if idx == 0:
+            continue
+        if sum(losses[idx]) != 0:
+            log_loss_summary(logger, losses[idx], step, tag=f'{phase}_block{idx}_loss')
+    log_loss_summary(logger, float(ap_scores[0]) / total_cnt, step, tag=f'{phase}_mAP')
+    for idx, ap_score in enumerate(ap_scores):
+        if idx == 0:
+            continue
+        if ap_scores[idx] != 0:
+            log_loss_summary(logger, float(ap_scores[idx]) / total_cnt, step, tag=f'{phase}_block{idx}_mAP')
+
+
+@hydra.main(config_path='../conf', config_name="tests/train_cam/unet")
 def run_app(cfg: DictConfig) -> None:
-    makedirs(cfg)
+    os.makedirs(cfg.weights, exist_ok=True)
+    os.makedirs(cfg.logs, exist_ok=True)
     device = torch.device("cpu" if not torch.cuda.is_available() else cfg.device)
 
     loader_train, loader_valid = data_loaders(cfg)
     loaders = {"train": loader_train, "valid": loader_valid}
-    model = getattr(importlib.import_module(cfg.model), 'Net')(in_ch=3, mid_ch=cfg.mid_ch, out_ch=1,
-                                                               share_classifier=cfg.share_classifier)
+    model = getattr(importlib.import_module(cfg.model), 'Net')(
+        in_ch=3,
+        mid_ch=cfg.mid_ch,
+        out_ch=cfg.out_ch,
+        num_classes=cfg.num_classes,
+        share_classifier=cfg.share_classifier)
     model.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
 
     logger = Logger(cfg.logs)
-    loss_train, loss_valid, cls_loss_train, cls_loss_valid = [], [], [], []
     step = 0
+    losses_dict = {
+        'train': [[] for _ in range(7)],
+        'valid': [[] for _ in range(7)]
+    }
 
     for epoch in tqdm(range(cfg.epochs), total=cfg.epochs):
         print(f'Epoch: {epoch}')
         for phase in ["train", "valid"]:
-            total_cnt, running_ap0, running_ap1, running_ap2, running_ap3, running_ap4, running_ap5, running_ap6 = 0, 0., 0., 0., 0., 0., 0., 0.
+            total_cnt = 0
+            ap_scores = [0. for _ in range(7)]
             if phase == "train":
                 model.train()
             else:
@@ -66,61 +98,33 @@ def run_app(cfg: DictConfig) -> None:
 
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(phase == "train"):
-                    c0, c1, c2, c3, c4, c5, c6 = model(img)
-                    cls_loss2, loss = muti_margin_loss_fusion(c0, c1, c2, c3, c4, c5, c6, label)
+                    class_preds = model(img)
+                    losses, loss = multi_margin_loss_fusion(class_preds, label)
+                    for idx, l in enumerate(losses):
+                        losses_dict[phase][idx].append(l.item())
 
                     with torch.set_grad_enabled(False):
                         total_cnt += label.size(0)
-                        running_ap0 += get_ap_score(label.cpu().detach().numpy(),
-                                                    torch.sigmoid(c0).cpu().detach().numpy())
-                        running_ap1 += get_ap_score(label.cpu().detach().numpy(),
-                                                    torch.sigmoid(c1).cpu().detach().numpy())
-                        running_ap2 += get_ap_score(label.cpu().detach().numpy(),
-                                                    torch.sigmoid(c2).cpu().detach().numpy())
-                        running_ap3 += get_ap_score(label.cpu().detach().numpy(),
-                                                    torch.sigmoid(c3).cpu().detach().numpy())
-                        running_ap4 += get_ap_score(label.cpu().detach().numpy(),
-                                                    torch.sigmoid(c4).cpu().detach().numpy())
-                        running_ap5 += get_ap_score(label.cpu().detach().numpy(),
-                                                    torch.sigmoid(c5).cpu().detach().numpy())
-                        running_ap6 += get_ap_score(label.cpu().detach().numpy(),
-                                                    torch.sigmoid(c6).cpu().detach().numpy())
-
-                    if phase == "valid":
-                        loss_valid.append(loss.item())
-                        cls_loss_valid.append(cls_loss2.item())
+                        if type(class_preds) == tuple:
+                            for idx, c in enumerate(class_preds):
+                                ap_scores[idx] += get_ap_score(label.cpu().detach().numpy(),
+                                                               torch.sigmoid(c).cpu().detach().numpy())
+                        else:
+                            ap_scores[0] += get_ap_score(label.cpu().detach().numpy(),
+                                                         torch.sigmoid(class_preds).cpu().detach().numpy())
                     if phase == "train":
-                        loss_train.append(loss.item())
-                        cls_loss_train.append(cls_loss2.item())
                         loss.backward()
                         optimizer.step()
 
                 if phase == "train" and (step + 1) % 10 == 0:
-                    log_loss_summary(logger, loss_train, step, tag='total_loss')
-                    log_loss_summary(logger, cls_loss_train, step, tag="loss0")
-                    log_loss_summary(logger, [float(running_ap0) / total_cnt], step, tag="mAP0")
-                    log_loss_summary(logger, [float(running_ap1) / total_cnt], step, tag="mAP1")
-                    log_loss_summary(logger, [float(running_ap2) / total_cnt], step, tag="mAP2")
-                    log_loss_summary(logger, [float(running_ap3) / total_cnt], step, tag="mAP3")
-                    log_loss_summary(logger, [float(running_ap4) / total_cnt], step, tag="mAP4")
-                    log_loss_summary(logger, [float(running_ap5) / total_cnt], step, tag="mAP5")
-                    log_loss_summary(logger, [float(running_ap6) / total_cnt], step, tag="mAP6")
-
+                    log_losses(logger, step, phase, losses_dict, ap_scores, total_cnt)
+                    losses_dict.update({phase: [[] for _ in range(7)]})
+                    ap_scores = [0. for _ in range(7)]
             if phase == "valid":
-                log_loss_summary(logger, loss_valid, step, tag="val_total_loss")
-                log_loss_summary(logger, cls_loss_valid, step, tag="val_loss0")
-                log_loss_summary(logger, [float(running_ap0) / total_cnt], step, tag="val_mAP0")
-                log_loss_summary(logger, [float(running_ap1) / total_cnt], step, tag="val_mAP1")
-                log_loss_summary(logger, [float(running_ap2) / total_cnt], step, tag="val_mAP2")
-                log_loss_summary(logger, [float(running_ap3) / total_cnt], step, tag="val_mAP3")
-                log_loss_summary(logger, [float(running_ap4) / total_cnt], step, tag="val_mAP4")
-                log_loss_summary(logger, [float(running_ap5) / total_cnt], step, tag="val_mAP5")
-                log_loss_summary(logger, [float(running_ap6) / total_cnt], step, tag="val_mAP6")
-
-                torch.save(model.state_dict(), os.path.join(cfg.weights, "model.pt"))
-            loss_valid = []
-            cls_loss_valid = []
-            print('\nmAP', float(running_ap0) / total_cnt)
+                log_losses(logger, step, phase, losses_dict, ap_scores, total_cnt)
+                losses_dict.update({phase: [[] for _ in range(7)]})
+                ap_scores = [0. for _ in range(7)]
+            torch.save(model.state_dict(), os.path.join(cfg.weights, "model.pt"))
 
 
 def data_loaders(cfg):

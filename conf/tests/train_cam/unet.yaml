@@ -1,0 +1,21 @@
+hydra:
+  run:
+    dir: ./outputs/test-train-cam/${now:%Y-%m-%d}/${now:%H-%M-%S}
+batch_size: 2
+epochs: 5
+lr: 0.001
+device: 'cuda:0'
+workers: 0
+weights: ./weights
+logs: ./logs
+voc12_root: ${hydra:runtime.cwd}/../data/raw/VOCdevkit/VOC2012
+train_list: ${hydra:runtime.cwd}/voc12/dev.txt
+val_list: ${hydra:runtime.cwd}/voc12/dev.txt
+cls_label_path: ${hydra:runtime.cwd}/voc12/cls_labels.npy
+crop_size: 320
+weight_decay: 0
+num_classes: 20
+mid_ch: 16
+out_ch: 21
+model: models.unet.net
+share_classifier: True
