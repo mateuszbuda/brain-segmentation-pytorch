@@ -117,6 +117,7 @@ def run_app(cfg: DictConfig) -> None:
                     logging.info(f'Validation Loss decreased from {best_val_loss} to {mean_loss}')
                     best_val_loss = mean_loss
                     torch.save(model.state_dict(), os.path.join(cfg.weights, "best_model.pt"))
+                    counter = 0
                 else:
                     counter += 1
                     logging.info(f'Validation Loss is not decreasing for the {counter} times')
