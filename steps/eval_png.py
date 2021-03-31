@@ -14,11 +14,11 @@ from tqdm import tqdm
 def run_app(cfg: DictConfig) -> None:
     dataset = VOCSemanticSegmentationDataset(split=cfg.infer_set, data_dir=cfg.voc12_root)
     labels = [dataset.get_example_by_keys(i, (1,))[0] for i in range(len(dataset))]
-    for subdir in os.listdir(cfg.cam_out_dir):
-        folder = os.path.join(cfg.cam_out_dir, subdir)
+    for subdir in os.listdir(cfg.output_dir):
+        folder = os.path.join(cfg.output_dir, subdir)
         preds = []
         for id in tqdm(dataset.ids):
-            cls_labels = imageio.imread(os.path.join(cfg.output_dir, id + '.png')).astype(np.uint8)
+            cls_labels = imageio.imread(os.path.join(folder, id + '.png')).astype(np.uint8)
             cls_labels[cls_labels == 255] = 0
             preds.append(cls_labels.copy())
 
