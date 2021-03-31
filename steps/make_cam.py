@@ -26,7 +26,7 @@ def extract_valid_cams(cams, size, label, cfg, idx, img_name):
     output_folder = os.path.join(cfg.output_dir, idx)
     os.makedirs(output_folder, exist_ok=True)
     np.save(os.path.join(output_folder, img_name + '.npy'),
-            {"keys": valid_cat, "high_res": strided_cam.cpu().numpy()})
+            {"keys": valid_cat.cpu().numpy(), "high_res": strided_cam.cpu().numpy()})
 
 
 @hydra.main(config_path='../conf', config_name="tests/make_cam/unet")
