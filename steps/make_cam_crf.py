@@ -1,11 +1,8 @@
-import importlib
 import os
 
 import hydra
 import imageio
 import numpy as np
-import torch
-import torch.nn.functional as F
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -15,20 +12,9 @@ from voc12 import dataloader
 from voc12.dataloader import get_img_path
 
 
-def extract_valid_cams(img, cams, size, label, cfg, idx, img_name):
+def extract_valid_cams(img, cams, keys, cfg, idx, img_name):
     idx = str(idx)
-    cams = torch.sum(
-        torch.stack(
-            [F.interpolate(o, size, mode='bilinear', align_corners=False)[0] for o in cams]),
-        0)
-
-    valid_cat = torch.nonzero(label, as_tuple=False)[:, 0]
-
-    cams = cams[valid_cat]
-    cams /= F.adaptive_max_pool2d(cams, (1, 1)) + 1e-5
-    cams = cams.cpu().numpy()
-
-    keys = np.pad(valid_cat.cpu().numpy() + 1, (1, 0), mode='constant')
+    keys = np.pad(keys + 1, (1, 0), mode='constant')
 
     # 1. find confident fg & bg
     fg_conf_cam = np.pad(cams, ((1, 0), (0, 0), (0, 0)), mode='constant', constant_values=cfg.conf_fg_thres)
@@ -52,43 +38,28 @@ def extract_valid_cams(img, cams, size, label, cfg, idx, img_name):
     imageio.imwrite(os.path.join(output_folder, img_name + '.png'), conf.astype(np.uint8))
 
 
-@hydra.main(config_path='../conf', config_name="tests/make_cam_crf/unet")
+@hydra.main(config_path='../conf', config_name="unet/make_cam_crf")
 def run_app(cfg: DictConfig) -> None:
     os.makedirs(cfg.output_dir, exist_ok=True)
-    device = torch.device("cpu" if not torch.cuda.is_available() else cfg.device)
 
     data_loader = data_loaders(cfg)
-    model = getattr(importlib.import_module(cfg.model), 'CAM')(
-        in_ch=3,
-        mid_ch=cfg.mid_ch,
-        out_ch=cfg.out_ch,
-        num_classes=cfg.num_classes,
-        share_classifier=cfg.share_classifier)
-    model.load_state_dict(torch.load(cfg.weights, map_location='cpu'), strict=True)
-    model.to(device)
-    model.eval()
 
     for i, data in tqdm(enumerate(data_loader), total=len(data_loader.dataset)):
         img_name = data['name'][0]
-        label = data['label'][0]
-        imgs = data['img']
-        size = data['size']
-        label = label.to(device)
         img = np.asarray(imageio.imread(get_img_path(img_name, cfg.voc12_root)))
 
-        with torch.set_grad_enabled(False):
-            cams = [model(img[0].to(device)) for img in imgs]
-            if type(cams[0]) == tuple:
-                cams = list(zip(*cams))
-                for idx, selected_cams in enumerate(cams):
-                    extract_valid_cams(img, selected_cams, size, label, cfg, idx, img_name)
-            else:
-                extract_valid_cams(img, cams, size, label, cfg, 0, img_name)
+        for subdir in os.listdir(cfg.cam_out_dir):
+            folder = os.path.join(cfg.cam_out_dir, subdir)
+
+            cam_dict = np.load(os.path.join(folder, img_name + '.npy'), allow_pickle=True).item()
+            cams = cam_dict['high_res']
+            keys = cam_dict['keys']
+
+            extract_valid_cams(img, cams, keys, cfg, subdir, img_name)
 
 
 def data_loaders(cfg):
-    dataset = dataloader.VOC12ClassificationDatasetMSF(cfg.infer_list, voc12_root=cfg.voc12_root,
-                                                       scales=[1.0, 0.5, 1.5, 2.0])
+    dataset = dataloader.VOC12ImageDataset(cfg.infer_list, voc12_root=cfg.voc12_root, to_torch=False)
 
     loader = DataLoader(dataset, drop_last=False, num_workers=0)
 
