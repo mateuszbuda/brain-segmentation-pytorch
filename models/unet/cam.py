@@ -22,7 +22,7 @@ class CAM(Net):
 
         x = F.relu(F.conv2d(bottleneck, self.classifier.weight))
         x = x[0] + x[1].flip(-1)
-        return x.unsqueeze(0)
+        return x
 
 
 if __name__ == '__main__':
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     x = torch.rand([2, 3, 320, 320])
     y = model(x)
     print(y.shape)
-    assert y.shape == (1, 20, 20, 20)
+    assert y.shape == (20, 20, 20)
 
     model = CAM(init_features=32)
 
@@ -42,7 +42,7 @@ if __name__ == '__main__':
     x = torch.rand([2, 3, 320, 320])
     y = model(x)
 
-    assert y.shape == (1, 20, 20, 20)
+    assert y.shape == (20, 20, 20)
 
     model = CAM(mid_ch=64)
 
@@ -50,4 +50,4 @@ if __name__ == '__main__':
     x = torch.rand([2, 3, 320, 320])
     y = model(x)
 
-    assert y.shape == (1, 20, 20, 20)
+    assert y.shape == (20, 20, 20)

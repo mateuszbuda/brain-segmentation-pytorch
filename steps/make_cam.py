@@ -14,10 +14,9 @@ from voc12 import dataloader
 
 def extract_valid_cams(cams, size, label, cfg, idx, img_name):
     idx = str(idx)
-    strided_cam = torch.sum(
-        torch.stack(
-            [F.interpolate(o, size, mode='bilinear', align_corners=False)[0] for o in cams]),
-        0)
+    strided_cam = [F.interpolate(torch.unsqueeze(o, 1), size,
+                                 mode='bilinear', align_corners=False) for o in cams]
+    strided_cam = torch.sum(torch.stack(strided_cam, 0), 0)[:, 0, :size[0], :size[1]]
 
     valid_cat = torch.nonzero(label, as_tuple=False)[:, 0]
 

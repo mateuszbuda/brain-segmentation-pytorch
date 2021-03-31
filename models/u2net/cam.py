@@ -54,12 +54,12 @@ class CAM(Net):
             hx5 = hx5[0] + hx5[1].flip(-1)
             hx6 = hx6[0] + hx6[1].flip(-1)
 
-            hx1 = F.interpolate(hx1.unsqueeze(0), x_size, mode='bilinear', align_corners=False)
-            hx2 = F.interpolate(hx2.unsqueeze(0), x_size, mode='bilinear', align_corners=False)
-            hx3 = F.interpolate(hx3.unsqueeze(0), x_size, mode='bilinear', align_corners=False)
-            hx4 = F.interpolate(hx4.unsqueeze(0), x_size, mode='bilinear', align_corners=False)
-            hx5 = F.interpolate(hx5.unsqueeze(0), x_size, mode='bilinear', align_corners=False)
-            hx6 = F.interpolate(hx6.unsqueeze(0), x_size, mode='bilinear', align_corners=False)
+            hx1 = F.interpolate(hx1.unsqueeze(0), x_size, mode='bilinear', align_corners=False)[0]
+            hx2 = F.interpolate(hx2.unsqueeze(0), x_size, mode='bilinear', align_corners=False)[0]
+            hx3 = F.interpolate(hx3.unsqueeze(0), x_size, mode='bilinear', align_corners=False)[0]
+            hx4 = F.interpolate(hx4.unsqueeze(0), x_size, mode='bilinear', align_corners=False)[0]
+            hx5 = F.interpolate(hx5.unsqueeze(0), x_size, mode='bilinear', align_corners=False)[0]
+            hx6 = F.interpolate(hx6.unsqueeze(0), x_size, mode='bilinear', align_corners=False)[0]
 
             hx0 = torch.sum(torch.stack([hx1, hx2, hx3, hx4, hx5, hx6]), 0)
             return hx0, hx1, hx2, hx3, hx4, hx5, hx6
@@ -75,10 +75,10 @@ if __name__ == '__main__':
     y = model(x)
     y0, y1, y2, y3, y4, y5, y6 = y
 
-    assert y0.shape == (1, 20, 320, 320)
-    assert y1.shape == (1, 20, 320, 320)
-    assert y2.shape == (1, 20, 320, 320)
-    assert y3.shape == (1, 20, 320, 320)
-    assert y4.shape == (1, 20, 320, 320)
-    assert y5.shape == (1, 20, 320, 320)
-    assert y6.shape == (1, 20, 320, 320)
+    assert y0.shape == (20, 320, 320)
+    assert y1.shape == (20, 320, 320)
+    assert y2.shape == (20, 320, 320)
+    assert y3.shape == (20, 320, 320)
+    assert y4.shape == (20, 320, 320)
+    assert y5.shape == (20, 320, 320)
+    assert y6.shape == (20, 320, 320)

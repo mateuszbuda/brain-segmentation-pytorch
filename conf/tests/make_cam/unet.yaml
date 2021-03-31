@@ -2,7 +2,7 @@ hydra:
   run:
     dir: ./outputs/test-make-cam/${now:%Y-%m-%d}/${now:%H-%M-%S}
 device: 'cuda:0'
-weights: /Users/cenk.bircanoglu/workspace/personal/vision/unet/outputs/test-train-cam/2021-03-31/01-27-55/weights/model.pt
+weights: /Users/cenk.bircanoglu/workspace/personal/vision/unet/outputs/test-train-cam/2021-03-31/20-34-20/weights/best_model.pt
 logs: ./logs
 voc12_root: ${hydra:runtime.cwd}/../data/raw/VOCdevkit/VOC2012
 infer_list: ${hydra:runtime.cwd}/voc12/val.txt
