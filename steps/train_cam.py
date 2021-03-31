@@ -69,6 +69,7 @@ def run_app(cfg: DictConfig) -> None:
         'valid': [[] for _ in range(7)]
     }
     best_val_loss = 10*10
+    counter = 0
     for epoch in tqdm(range(cfg.epochs), total=cfg.epochs):
         print(f'Epoch: {epoch}')
         for phase in ["train", "valid"]:
@@ -114,8 +115,12 @@ def run_app(cfg: DictConfig) -> None:
                 if mean_loss < best_val_loss:
                     best_val_loss = losses_dict[phase][0]
                     torch.save(model.state_dict(), os.path.join(cfg.weights, "best_model.pt"))
+                else:
+                    counter += 1
                 log_losses(logger, step, phase, losses_dict, ap_scores, total_cnt)
                 losses_dict.update({phase: [[] for _ in range(7)]})
+        if counter >= cfg.get('early_stopping', 10):
+            break
         torch.save(model.state_dict(), os.path.join(cfg.weights, "model.pt"))
 
 
