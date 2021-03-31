@@ -26,17 +26,6 @@ def multi_margin_loss_fusion(class_preds, labels_v):
         return [loss], loss
 
 
-def initialize_losses():
-    losses = {
-        'tr_total_loss': [],
-        'val_total_loss': []
-    }
-    for i in range(1, 7):
-        losses.update({f'tr_block{i}_loss': []})
-        losses.update({f'val_block{i}_loss': []})
-    return losses
-
-
 def log_losses(logger, step, phase, losses_dict, ap_scores, total_cnt):
     losses = losses_dict[phase]
 
@@ -119,12 +108,10 @@ def run_app(cfg: DictConfig) -> None:
                 if phase == "train" and (step + 1) % 10 == 0:
                     log_losses(logger, step, phase, losses_dict, ap_scores, total_cnt)
                     losses_dict.update({phase: [[] for _ in range(7)]})
-                    ap_scores = [0. for _ in range(7)]
             if phase == "valid":
                 log_losses(logger, step, phase, losses_dict, ap_scores, total_cnt)
                 losses_dict.update({phase: [[] for _ in range(7)]})
-                ap_scores = [0. for _ in range(7)]
-            torch.save(model.state_dict(), os.path.join(cfg.weights, "model.pt"))
+        torch.save(model.state_dict(), os.path.join(cfg.weights, "model.pt"))
 
 
 def data_loaders(cfg):

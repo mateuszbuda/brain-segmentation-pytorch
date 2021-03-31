@@ -4,4 +4,4 @@ hydra:
 voc12_root: ${hydra:runtime.cwd}/../data/raw/VOCdevkit/VOC2012
 infer_set: val
 cls_label_path: ${hydra:runtime.cwd}/voc12/cls_labels.npy
-output_dir: /Users/cenk.bircanoglu/workspace/personal/vision/unet/unet-training/2021-03-30/21-37-50/sem_outputs
+output_dir: /Users/cenk.bircanoglu/workspace/personal/vision/unet/unet-training/2021-03-31/09-22-33/sem_outputs

@@ -1,7 +1,7 @@
 hydra:
   run:
     dir: ./outputs/train-cam/${now:%Y-%m-%d}/${now:%H-%M-%S}
-batch_size: 16
+batch_size: 128
 epochs: 200
 lr: 0.001
 device: 'cuda:0'
@@ -9,7 +9,7 @@ workers: 8
 weights: ./weights
 logs: ./logs
 voc12_root: ${hydra:runtime.cwd}/../data/raw/VOCdevkit/VOC2012
-train_list: ${hydra:runtime.cwd}/voc12/train.txt
+train_list: ${hydra:runtime.cwd}/voc12/train_aug.txt
 val_list: ${hydra:runtime.cwd}/voc12/val.txt
 cls_label_path: ${hydra:runtime.cwd}/voc12/cls_labels.npy
 crop_size: 320
