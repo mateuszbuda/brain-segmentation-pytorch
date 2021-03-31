@@ -1,6 +1,6 @@
 hydra:
   run:
-    dir: ./unet-training/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ./outputs/eval-png/${now:%Y-%m-%d}/${now:%H-%M-%S}
 voc12_root: ${hydra:runtime.cwd}/../data/raw/VOCdevkit/VOC2012
 infer_set: val
 cls_label_path: ${hydra:runtime.cwd}/voc12/cls_labels.npy

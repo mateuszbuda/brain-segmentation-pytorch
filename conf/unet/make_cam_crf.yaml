@@ -1,0 +1,18 @@
+hydra:
+  run:
+    dir: ./outputs/make-cam-crf/${now:%Y-%m-%d}/${now:%H-%M-%S}
+device: 'cuda:0'
+weights:
+logs: ./logs
+voc12_root: ${hydra:runtime.cwd}/../data/raw/VOCdevkit/VOC2012
+infer_list: ${hydra:runtime.cwd}/voc12/val.txt
+cls_label_path: ${hydra:runtime.cwd}/voc12/cls_labels.npy
+crop_size: 320
+num_classes: 20
+mid_ch: 16
+out_ch: 21
+model: models.unet.cam
+share_classifier: True
+output_dir: crf_outputs/
+conf_fg_thres: 0.30
+conf_bg_thres: 0.05

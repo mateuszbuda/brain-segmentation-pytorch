@@ -123,7 +123,7 @@ def run_app(cfg: DictConfig) -> None:
                     logging.info(f'Validation Loss is not decreasing for the {counter} times')
                 log_losses(logger, step, phase, losses_dict, ap_scores, total_cnt)
                 losses_dict.update({phase: [[] for _ in range(7)]})
-        if counter >= cfg.get('early_stopping', 10):
+        if counter >= cfg.get('early_stopping', 15):
             break
         torch.save(model.state_dict(), os.path.join(cfg.weights, "model.pt"))
 
