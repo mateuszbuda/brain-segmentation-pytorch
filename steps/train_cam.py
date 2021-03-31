@@ -114,12 +114,12 @@ def run_app(cfg: DictConfig) -> None:
             if phase == "valid":
                 mean_loss = mean(losses_dict[phase][0])
                 if mean_loss < best_val_loss:
-                    logging.info(f'Validation Loss is decreasing from {best_val_loss} to {mean_loss}')
+                    logging.info(f'Validation Loss decreased from {best_val_loss} to {mean_loss}')
                     best_val_loss = mean_loss
                     torch.save(model.state_dict(), os.path.join(cfg.weights, "best_model.pt"))
                 else:
                     counter += 1
-                    logging.info(f'Validation Loss is not decreasing for the {counter} time')
+                    logging.info(f'Validation Loss is not decreasing for the {counter} times')
                 log_losses(logger, step, phase, losses_dict, ap_scores, total_cnt)
                 losses_dict.update({phase: [[] for _ in range(7)]})
         if counter >= cfg.get('early_stopping', 10):
