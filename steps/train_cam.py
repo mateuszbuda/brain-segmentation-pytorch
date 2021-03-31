@@ -1,4 +1,5 @@
 import importlib
+import logging
 import os
 from statistics import mean
 
@@ -68,7 +69,7 @@ def run_app(cfg: DictConfig) -> None:
         'train': [[] for _ in range(7)],
         'valid': [[] for _ in range(7)]
     }
-    best_val_loss = 10*10
+    best_val_loss = 10 * 10
     counter = 0
     for epoch in tqdm(range(cfg.epochs), total=cfg.epochs):
         print(f'Epoch: {epoch}')
@@ -113,10 +114,12 @@ def run_app(cfg: DictConfig) -> None:
             if phase == "valid":
                 mean_loss = mean(losses_dict[phase][0])
                 if mean_loss < best_val_loss:
+                    logging.info(f'Validation Loss is decreasing from {best_val_loss} to {mean_loss}')
                     best_val_loss = losses_dict[phase][0]
                     torch.save(model.state_dict(), os.path.join(cfg.weights, "best_model.pt"))
                 else:
                     counter += 1
+                    logging.info(f'Validation Loss is not decreasing for the {counter} time')
                 log_losses(logger, step, phase, losses_dict, ap_scores, total_cnt)
                 losses_dict.update({phase: [[] for _ in range(7)]})
         if counter >= cfg.get('early_stopping', 10):
