@@ -5,7 +5,7 @@ device: 'cuda:0'
 weights: /Users/cenk.bircanoglu/workspace/personal/vision/unet/outputs/test-train-cam/2021-03-31/01-27-55/weights/model.pt
 logs: ./logs
 voc12_root: ${hydra:runtime.cwd}/../data/raw/VOCdevkit/VOC2012
-infer_list: ${hydra:runtime.cwd}/voc12/dev.txt
+infer_list: ${hydra:runtime.cwd}/voc12/val.txt
 cls_label_path: ${hydra:runtime.cwd}/voc12/cls_labels.npy
 crop_size: 320
 num_classes: 20
