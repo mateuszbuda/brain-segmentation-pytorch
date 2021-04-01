@@ -27,7 +27,7 @@ def loss_multipliers(epoch, max_epoch):
     ranges = np.arange(start, end + step, step).tolist()[::-1]
     first = round(ranges[epoch // steps_cnt], 2)
     second = round(1 - first, 2)
-    return first, second
+    return 0.5, 0.5#first, second
 
 
 mlsm_loss = nn.MultiLabelSoftMarginLoss(reduction='mean')
@@ -50,7 +50,7 @@ def muti_margin_loss_fusion(c0, labels_v):
     return loss
 
 
-@hydra.main(config_path='../conf', config_name="train_seg_unet")
+@hydra.main(config_path='../conf', config_name="train_seg_unet_test")
 def run_app(cfg: DictConfig) -> None:
     makedirs(cfg)
     device = torch.device("cpu" if not torch.cuda.is_available() else cfg.device)
@@ -58,7 +58,11 @@ def run_app(cfg: DictConfig) -> None:
     loader_train, loader_valid, dataset_train, dataset_valid = data_loaders(cfg)
     loaders = {"train": loader_train, "valid": loader_valid}
 
-    model = Segmentation(in_channels=3, init_features=cfg.mid_ch, out_channels=21)
+    model = Segmentation(in_ch=3,
+                         mid_ch=cfg.mid_ch,
+                         out_ch=cfg.out_ch,
+                         num_classes=cfg.num_classes,
+                         share_classifier=cfg.share_classifier)
     if cfg.get('finetune', False):
         model.load_state_dict(torch.load(cfg.finetune_from, map_location='cpu'), strict=True)
     model.to(device)
@@ -154,16 +158,14 @@ def run_app(cfg: DictConfig) -> None:
             for data in tqdm(dataset_train, total=len(dataset_train)):
                 idx = data['idx']
                 img_i = [torch.from_numpy(img_ii).unsqueeze(0).to(device) for img_ii in data['img']]
-                pseudo_label_i = model.generate_pseudo_label(img_i, data['label'], data['size'],
-                                                             cam_order=cfg.cam_order)
-                loader_train.dataset.update_cam(idx, pseudo_label_i.cpu().numpy())
+                res = model.generate_pseudo_label(img_i, data['label'], data['size'], fg_thres=cfg.cam_eval_thres)
+                loader_train.dataset.update_cam(idx, res)
             print('\nCreating Pseudo Labels for validation')
             for data in tqdm(dataset_valid, total=len(dataset_valid)):
                 idx = data['idx']
                 img_i = [torch.from_numpy(img_ii).unsqueeze(0).to(device) for img_ii in data['img']]
-                pseudo_label_i = model.generate_pseudo_label(img_i, data['label'], data['size'],
-                                                             cam_order=cfg.cam_order)
-                loader_valid.dataset.update_cam(idx, pseudo_label_i.cpu().numpy())
+                res = model.generate_pseudo_label(img_i, data['label'], data['size'], fg_thres=cfg.cam_eval_thres)
+                loader_valid.dataset.update_cam(idx, res)
 
 
 def data_loaders(cfg):

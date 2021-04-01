@@ -15,6 +15,8 @@ def run_app(cfg: DictConfig) -> None:
     dataset = VOCSemanticSegmentationDataset(split=cfg.infer_set, data_dir=cfg.voc12_root)
     labels = [dataset.get_example_by_keys(i, (1,))[0] for i in range(len(dataset))]
     for subdir in os.listdir(cfg.output_dir):
+        if subdir.startswith('.'):
+            continue
         folder = os.path.join(cfg.output_dir, subdir)
         preds = []
         for id in tqdm(dataset.ids):

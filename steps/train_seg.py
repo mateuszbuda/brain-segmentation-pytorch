@@ -61,7 +61,7 @@ def muti_margin_loss_fusion(c0, c1, c2, c3, c4, c5, c6, labels_v):
     return loss0, loss
 
 
-@hydra.main(config_path='../conf', config_name="train_seg_finetune")
+@hydra.main(config_path='../conf', config_name="train_seg")
 def run_app(cfg: DictConfig) -> None:
     makedirs(cfg)
     device = torch.device("cpu" if not torch.cuda.is_available() else cfg.device)

@@ -8,5 +8,4 @@ infer_list: ${hydra:runtime.cwd}/voc12/val.txt
 cls_label_path: ${hydra:runtime.cwd}/voc12/cls_labels.npy
 cam_out_dir: /Users/cenk.bircanoglu/workspace/personal/vision/unet/outputs/make-cam/2021-03-31/12-49-16/cam_outputs
 output_dir: crf_outputs/
-conf_fg_thres: 0.30
-conf_bg_thres: 0.05
+conf_fg_thres: 0.15

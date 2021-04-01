@@ -7,6 +7,7 @@ import torch
 from torch.utils.data import Dataset
 
 from misc import imutils
+from misc.imutils import crf_inference_label
 
 IMG_FOLDER_NAME = "JPEGImages"
 ANNOT_FOLDER_NAME = "Annotations"
@@ -235,25 +236,6 @@ class VOC12SegmentationDataset(Dataset):
         return {'name': name, 'img': img, 'label': label, 'idx': idx}
 
 
-import pydensecrf.densecrf as dcrf
-from pydensecrf.utils import unary_from_labels
-
-
-def crf_inference_label(img, labels, t=10, n_labels=21, gt_prob=0.7):
-    h, w = img.shape[:2]
-
-    d = dcrf.DenseCRF2D(w, h, n_labels)
-
-    unary = unary_from_labels(labels, n_labels, gt_prob=gt_prob, zero_unsure=False)
-
-    d.setUnaryEnergy(unary)
-    d.addPairwiseGaussian(sxy=3, compat=3)
-    d.addPairwiseBilateral(sxy=50, srgb=5, rgbim=np.ascontiguousarray(np.copy(img)), compat=10)
-
-    q = d.inference(t)
-
-    return np.argmax(np.array(q).reshape((n_labels, h, w)), axis=0)
-
 
 class VOC12PseudoSegmentationDataset(VOC12ClassificationDataset):
 
@@ -268,29 +250,14 @@ class VOC12PseudoSegmentationDataset(VOC12ClassificationDataset):
         self.cam_eval_thres = cam_eval_thres
 
     def update_cam(self, idx, cam):
-        if type(cam) == np.ndarray:
-            self.cam_results[idx] = cam
-        else:
-            raise Exception({'message': f'CAM Type {type(cam)}'})
+        self.cam_results[idx] = cam
 
-    def generate_label(self, idx, label, img):
-        cams = self.cam_results[idx]
-        cams = np.pad(cams, ((1, 0), (0, 0), (0, 0)), mode='constant', constant_values=self.cam_eval_thres)
-        label = torch.nonzero(label, as_tuple=False)[:, 0]
-        keys = np.pad(label + 1, (1, 0), mode='constant')
-        cls_labels = np.argmax(cams, axis=0)
-        cls_labels = keys[cls_labels]
-        result = np.zeros(cams.shape[1:])
-        for lbl in np.unique(keys):
-            if lbl == 0:
-                continue
-            cam_copy = cls_labels.copy()
-            cam_copy[cam_copy != lbl] = 0
-            cam_copy[cam_copy != 0] = 1
-            pred = crf_inference_label(img, cam_copy, n_labels=2)
-            result[pred == 1] = lbl
+    def generate_label(self, idx, img):
+        fg_conf_cam, keys = self.cam_results[idx]
+        pred = crf_inference_label(img, fg_conf_cam, n_labels=keys.shape[0])
+        conf = keys[pred]
 
-        return result.astype(np.uint8)
+        return conf.astype(np.uint8)
 
     def __getitem__(self, idx):
         name = self.img_name_list[idx]
@@ -299,7 +266,7 @@ class VOC12PseudoSegmentationDataset(VOC12ClassificationDataset):
         img = np.asarray(imageio.imread(get_img_path(name_str, self.voc12_root)))
         label = torch.from_numpy(self.label_list[idx])
         if self.cam_results[idx] is not None:
-            seg_label = self.generate_label(idx, label, img)
+            seg_label = self.generate_label(idx, img)
         else:
             seg_label = np.zeros((img.shape[0], img.shape[1])).astype(np.uint8)
 

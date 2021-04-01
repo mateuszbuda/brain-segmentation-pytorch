@@ -22,15 +22,15 @@ def extract_valid_cams(img, cams, keys, cfg, idx, img_name):
     pred = crf_inference_label(img, fg_conf_cam, n_labels=keys.shape[0])
     fg_conf = keys[pred]
 
-    bg_conf_cam = np.pad(cams, ((1, 0), (0, 0), (0, 0)), mode='constant', constant_values=cfg.conf_bg_thres)
-    bg_conf_cam = np.argmax(bg_conf_cam, axis=0)
-    pred = crf_inference_label(img, bg_conf_cam, n_labels=keys.shape[0])
-    bg_conf = keys[pred]
+    #bg_conf_cam = np.pad(cams, ((1, 0), (0, 0), (0, 0)), mode='constant', constant_values=cfg.conf_bg_thres)
+    #bg_conf_cam = np.argmax(bg_conf_cam, axis=0)
+    #pred = crf_inference_label(img, bg_conf_cam, n_labels=keys.shape[0])
+    #bg_conf = keys[pred]
 
     # 2. combine confident fg & bg
     conf = fg_conf.copy()
-    conf[fg_conf == 0] = 255
-    conf[bg_conf + fg_conf == 0] = 0
+    #conf[fg_conf == 0] = 255
+    #conf[bg_conf + fg_conf == 0] = 0
 
     output_folder = os.path.join(cfg.output_dir, idx)
     os.makedirs(output_folder, exist_ok=True)
@@ -49,6 +49,8 @@ def run_app(cfg: DictConfig) -> None:
         img = np.asarray(imageio.imread(get_img_path(img_name, cfg.voc12_root)))
 
         for subdir in os.listdir(cfg.cam_out_dir):
+            if subdir.startswith('.'):
+                continue
             folder = os.path.join(cfg.cam_out_dir, subdir)
 
             cam_dict = np.load(os.path.join(folder, img_name + '.npy'), allow_pickle=True).item()

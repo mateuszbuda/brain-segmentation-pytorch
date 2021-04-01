@@ -1,7 +1,7 @@
 hydra:
   run:
-    dir: ./unet-training/${now:%Y-%m-%d}/${now:%H-%M-%S}
-batch_size: 12
+    dir: ./outputs/train-seg-unet/${now:%Y-%m-%d}/${now:%H-%M-%S}
+batch_size: 32
 epochs: 200
 lr: 0.001
 device: 'cuda:0'
@@ -14,9 +14,12 @@ val_list: ${hydra:runtime.cwd}/voc12/val.txt
 cls_label_path: ${hydra:runtime.cwd}/voc12/cls_labels.npy
 crop_size: 320
 weight_decay: 0
-mid_ch: 64
-share_classifier: True
-cam_eval_thres: 0.05
-cam_order: 0
+mid_ch: 32
+out_ch: 21
+num_classes: 20
+share_classifier: False
+cam_eval_thres: 0.3
 vis_images: 100
 vis_freq: 1
+finetune: True
+finetune_from: ${hydra:runtime.cwd}/outputs/train-cam/2021-03-31/unet-32-v3/weights/model.pt

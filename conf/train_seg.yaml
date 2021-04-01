@@ -17,7 +17,7 @@ weight_decay: 0
 mid_ch: 16
 model: models.u2netp.seg
 share_classifier: False
-cam_eval_thres: 0.05
+cam_eval_thres: 0.3
 cam_order: 0
 vis_images: 200
 vis_freq: 1
