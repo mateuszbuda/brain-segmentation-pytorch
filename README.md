@@ -84,3 +84,7 @@ Due to memory limitations for Kaggle kernels, input images are of size 224x224 i
 
 Running this code on a custom dataset would likely require adjustments in `dataset.py`.
 Should you need help with this, just open an issue.
+
+## TensorRT inference
+
+If you want to run the model inference with TensorRT runtime, here is a blog post from Nvidia that covers this: [Speeding Up Deep Learning Inference Using TensorRT](https://developer.nvidia.com/blog/speeding-up-deep-learning-inference-using-tensorrt/).
