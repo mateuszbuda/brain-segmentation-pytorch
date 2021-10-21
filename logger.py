@@ -1,5 +1,7 @@
 from io import BytesIO
 
+import PIL
+from PIL import Image
 import scipy.misc
 import tensorflow as tf
 
@@ -16,7 +18,7 @@ class Logger(object):
 
     def image_summary(self, tag, image, step):
         s = BytesIO()
-        scipy.misc.toimage(image).save(s, format="png")
+        Image.fromarray(image).save(s, format="png")
 
         # Create an Image object
         img_sum = tf.Summary.Image(
@@ -36,7 +38,7 @@ class Logger(object):
         img_summaries = []
         for i, img in enumerate(images):
             s = BytesIO()
-            scipy.misc.toimage(img).save(s, format="png")
+            Image.fromarray(img).save(s, format="png")
 
             # Create an Image object
             img_sum = tf.Summary.Image(
